@@ -20,8 +20,6 @@ CREATE TABLE IF NOT EXISTS `lj_base_province`
     `city_id`       varchar(255),
     `city_name`     varchar(255),
     `city_url`      varchar(255),
-    `start_time`    DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
-    `end_time`      DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `create_time`   DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `update_time`   DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
 );
@@ -37,8 +35,6 @@ CREATE TABLE IF NOT EXISTS `lj_base_areas`
     `sub_region_id`   varchar(255),
     `sub_region_name` varchar(255),
     `sub_region_url`  varchar(255),
-    `start_time`      DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
-    `end_time`        DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `create_time`     DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `update_time`     DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
 );

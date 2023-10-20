@@ -12,7 +12,7 @@ class HttpUtils:
         try:
             response = requests.get(url=url, params=params, headers=headers, timeout=timeout)
             response.raise_for_status()
-            return response.text
+            return response
         except requests.exceptions.RequestException as e:
             HttpUtils.logger.error(f'Error in GET request: {e}')
         except Exception as e:
@@ -79,5 +79,3 @@ class HttpUtils:
                 return False
         except Exception as e:
             print("下载文件异常：", e)
-
-
