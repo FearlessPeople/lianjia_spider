@@ -1,7 +1,18 @@
-# lianjia_spider
+# -*- coding: utf-8 -*-
+"""
+-------------------------------------------------
+@version    : v1.0
+@author     : fangzheng
+@contact    : fangzheng@rp-pet.cn
+@software   : PyCharm
+@filename   : init_table.py
+@create time: 2023/10/10 5:51 PM
+@modify time: 2023/10/10 5:51 PM
+@describe   : 
+-------------------------------------------------
+"""
 
-```sql
--- 省份-城市表
+init_sql = """
 CREATE TABLE IF NOT EXISTS `lj_base_province`
 (
     `id`            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,4 +67,4 @@ CREATE TABLE IF NOT EXISTS `lj_xiaoqu_detail`
     `create_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `update_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
 );
-```
+"""
