@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS `lj_xiaoqu_detail`
     `xiaoqu_id`   varchar(255),
     `fwzs`        varchar(255), -- 房屋总数
     `ldzs`        varchar(255), -- 楼栋总数
+    `all_label`   TEXT,         -- 所有字段信息
     `create_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `update_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
 );
