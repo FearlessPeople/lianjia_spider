@@ -493,7 +493,7 @@ def spider_by_condition(province, city=None, area=None):
     inner join {lj_base_areas_sql} lba on t.city_id = lba.city_id and t.region_id=lba.region_id and t.sub_region_id=lba.sub_region_id
     inner join {lj_base_province_sql} lbp on lba.city_id = lbp.city_id
     left join lj_xiaoqu_detail lxd on t.xiaoqu_id = lxd.xiaoqu_id
-    where lbp.province_name='{province}'
+    where 1=1
       and lxd.xiaoqu_id is null
     group by
     lbp.province_name
