@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import argparse
+import datetime
 import json
 import multiprocessing
 import os
-import random
 import sqlite3
 import sys
 import textwrap
@@ -13,8 +12,17 @@ from multiprocessing import Pool
 from urllib.parse import urlparse
 
 import pandas as pd
+import psutil
 import requests
 from lxml import etree
+
+print_sql = False
+
+
+# pyinstaller --onefile --clean --noconfirm -n lianjia lianjia.py
+def print2(*args, **kwargs):
+    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{current_time}]", *args, **kwargs)
 
 
 class SQLiteDB:
@@ -53,11 +61,28 @@ class SQLiteDB:
     def commit(self):
         self.conn.commit()
 
-    def insert(self, table, data):
+    def insert(self, table, data, echo=False):
         fields = ', '.join(data.keys())
         placeholders = ', '.join('?' * len(data))
         sql = f'INSERT INTO {table} ({fields}) VALUES ({placeholders})'
-        self.execute(sql, tuple(data.values()))
+        data_values = tuple(data.values())
+        if echo:
+            formatted_sql = sql
+            for value in data_values:
+                formatted_sql = formatted_sql.replace('?', f"'{value}'", 1)
+            print2(formatted_sql)
+        self.execute(sql, data_values)
+
+    def batch_insert(self, table, data):
+        if len(data) == 0:
+            raise Exception("Data is null")
+        keys = data[0].keys()
+        placeholders = ','.join(':' + key for key in keys)
+        insert_statement = f'INSERT INTO {table} ({",".join(keys)}) VALUES ({placeholders})'
+        self.check_cursor()
+        for item in data:
+            self.cursor.execute(insert_statement, item)
+        self.conn.commit()
 
     def upsert(self, table, data):
         placeholders = ", ".join(["?"] * len(data))
@@ -100,9 +125,9 @@ class HttpUtils:
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
-            print(f'Error in GET request: {e}')
+            print2(f'Error in GET request: {e}')
         except Exception as e:
-            print(f'Error in GET request: {e}')
+            print2(f'Error in GET request: {e}')
 
     @staticmethod
     def post(url, *args, **kwargs):
@@ -111,9 +136,9 @@ class HttpUtils:
             response.raise_for_status()
             return response
         except requests.exceptions.RequestException as e:
-            print(f'Error in POST request: {e}')
+            print2(f'Error in POST request: {e}')
         except Exception as e:
-            print(f'Error in GET request: {e}')
+            print2(f'Error in GET request: {e}')
 
 
 def split_list(input_list, n):
@@ -171,7 +196,7 @@ def get_base_province():
                     }
                     final_result.append(insertdata)
     else:
-        print("Failed to retrieve data from the website.")
+        print2("Failed to retrieve data from the website.")
     return final_result
 
 
@@ -192,7 +217,7 @@ def get_sub_region(url):
                 "sub_region_url": sub_region_url
             })
     else:
-        print("Failed to retrieve data from the website.")
+        print2("Failed to retrieve data from the website.")
     return final_result
 
 
@@ -217,9 +242,12 @@ def get_base_areas(url):
                 for sub_region in sub_regions:
                     final_result.append({**region, **sub_region})
             else:
+                region['sub_region_id'] = region['region_id']
+                region['sub_region_name'] = region['region_name']
+                region['sub_region_url'] = region['region_url']
                 final_result.append(region)
     else:
-        print("Failed to retrieve data from the website.")
+        print2("Failed to retrieve data from the website.")
     return final_result
 
 
@@ -237,7 +265,7 @@ def get_base_xiaoqu_pagenum(url):
         else:
             return 0
     else:
-        print("Failed to retrieve data from the website.")
+        print2("Failed to retrieve data from the website.")
 
 
 def get_base_xiaoqu_by_page_url(url):
@@ -257,7 +285,7 @@ def get_base_xiaoqu_by_page_url(url):
             }
             final_result.append(xiaoqu)
     else:
-        print("Failed to retrieve data from the website.")
+        print2("Failed to retrieve data from the website.")
     return final_result
 
 
@@ -344,18 +372,20 @@ def create_table():
         db.execute(sql=sql)
 
 
-def db_init(province_name=None):
-    print(f"开始初始化[{province_name}]省份基础数据...")
-    #  所有省份
+def db_init(province_name=None, city_name=None):
+    if not province_name:
+        raise Exception("未传递省份参数province_name")
+    print2(f"开始初始化[{province_name}]省份基础数据...")
     province_list = get_base_province()
-    db.delete(table='lj_base_province', condition=' 1=1 ')
+    db.delete(table='lj_base_province', condition=f" province_name='{province_name}' ")
     for province in province_list:
-        db.insert(table='lj_base_province', data=province)
+        if province['province_name'] == province_name:
+            db.insert(table='lj_base_province', data=province, echo=print_sql)
 
-    # 省份下城市，区域，子区域
-    condition = " 1=1"
-    if province_name:
-        condition = f" province_name='{province_name}'"
+    if city_name:
+        condition = f" province_name='{province_name}' and city_name='{city_name}' "
+    else:
+        condition = f" province_name='{province_name}' "
     city_list = db.select(table='lj_base_province', condition=condition)
     for city in city_list:
         city_id = city['city_id']
@@ -366,26 +396,25 @@ def db_init(province_name=None):
             area['city_id'] = city_id
             region_id = area['region_id']
 
-            db.insert(table='lj_base_areas', data=area)
+            db.insert(table='lj_base_areas', data=area, echo=print_sql)
 
             # 子区域下各小区列表
             sub_region_id = area['sub_region_id']
             sub_region_url = area['sub_region_url']
-            old_xiaoqu = db.select(table='lj_base_xiaoqu',
-                                   condition=f" sub_region_id='{sub_region_id}' and city_id='{city_id}' ")
-            if len(old_xiaoqu) <= 0:
-                baseurl = f'https://{city_id}.lianjia.com{sub_region_url}'
-                xiaoqu_list = get_base_xiaoqu(url=baseurl)
-                if xiaoqu_list:
-                    db.delete(table='lj_base_xiaoqu', condition=f" sub_region_id='{sub_region_id}'")
-                    for xiaoqu in xiaoqu_list:
-                        xiaoqu['city_id'] = city_id
-                        xiaoqu['region_id'] = region_id
-                        xiaoqu['sub_region_id'] = sub_region_id
-                        db.insert(table='lj_base_xiaoqu', data=xiaoqu)
-                else:
-                    print(f"{baseurl}下无小区信息")
-    print(f"[{province_name}]省份下所有城市、区域、子区域、小区信息初始化完成......")
+            baseurl = f'https://{city_id}.lianjia.com{sub_region_url}'
+            xiaoqu_list = get_base_xiaoqu(url=baseurl)
+            if xiaoqu_list:
+                for xiaoqu in xiaoqu_list:
+                    xiaoqu_id = xiaoqu['xiaoqu_id']
+                    xiaoqu['city_id'] = city_id
+                    xiaoqu['region_id'] = region_id
+                    xiaoqu['sub_region_id'] = sub_region_id
+                    db.delete(table='lj_base_xiaoqu',
+                              condition=f" city_id='{city_id}' and xiaoqu_id='{xiaoqu_id}'")
+                    db.insert(table='lj_base_xiaoqu', data=xiaoqu, echo=print_sql)
+            else:
+                print2(f"{baseurl}下无小区信息")
+    print2(f"[{province_name}]省份下所有城市、区域、子区域、小区信息初始化完成......")
 
 
 def get_longdong(xiaoqu_detail):
@@ -399,33 +428,60 @@ def get_longdong(xiaoqu_detail):
     return final_result
 
 
-def to_excel(province_name):
+def to_excel(province_name, city, area):
+    current_timestamp = time.time()
+    current_timestamp = int(current_timestamp)
+    file_path = f'{province_name}数据_{current_timestamp}.xlsx'
+    lj_base_areas_sql = f"lj_base_areas"
+    if city:
+        lj_base_province_sql = f"(select * from lj_base_province where province_name='{province}' and city_name='{city}' )"
+        file_path = f'{province_name}-{city}数据_{current_timestamp}.xlsx'
+        if area:
+            lj_base_areas_sql = f"(select * from lj_base_areas t where region_name='{area}')"
+            file_path = f'{province_name}-{city}-{area}数据_{current_timestamp}.xlsx'
+    else:
+        lj_base_province_sql = f"(select * from lj_base_province where province_name='{province}' )"
+
     sql = f'''
-    select lbp.province_name   as `省份`
+    select 
+       lbp.province_name   as `省份`
      , lbp.city_name       as `城市`
      , lba.city_id         as `城市ID`
+     , lba.region_id       as `区域ID`
+     , lba.region_name     as `区域名称`
      , lba.sub_region_id   as `子区域ID`
-     , lba.sub_region_name as `区域`
+     , lba.sub_region_name as `子区域名称`
      , "`" || t.xiaoqu_id  as `小区ID`
      , t.xiaoqu_name       as `小区名称`
      , t.xiaoqu_url        as `小区URL`
      , lxd.fwzs            as `房屋总数`
      , lxd.ldzs            as `楼栋总数`
 from lj_base_xiaoqu t
-left join lj_base_areas lba on t.city_id = lba.city_id and t.region_id = lba.region_id and t.sub_region_id = lba.sub_region_id
-left join lj_base_province lbp on lba.city_id = lbp.city_id
+left join {lj_base_areas_sql} lba on t.city_id = lba.city_id and t.region_id = lba.region_id and t.sub_region_id = lba.sub_region_id
+left join {lj_base_province_sql} lbp on lba.city_id = lbp.city_id
 left join lj_xiaoqu_detail lxd on t.xiaoqu_id = lxd.xiaoqu_id
-where lbp.province_name = '{province_name}';
-    '''
+where lbp.province_name = '{province_name}'
+group by 
+       lbp.province_name 
+     , lbp.city_name     
+     , lba.city_id      
+     , lba.region_id      
+     , lba.region_name     
+     , lba.sub_region_id   
+     , lba.sub_region_name 
+     , "`" || t.xiaoqu_id  
+     , t.xiaoqu_name      
+     , t.xiaoqu_url      
+     , lxd.fwzs        
+     , lxd.ldzs            
+;'''
     query_list = db.query(sql)
     result_df = pd.DataFrame(query_list)
-    file_path = f'{province_name}数据.xlsx'
     result_df.to_excel(file_path, index=False)
-    print(f"导出成功:{file_path}")
+    print2(f"导出成功:{file_path}")
 
 
 def process_elements(all_xiaoqu):
-    start = time.time()
     current_process = multiprocessing.current_process()
     current_process.name = "Lianjia_Process"
     xiaoqu_size = len(all_xiaoqu)
@@ -433,36 +489,30 @@ def process_elements(all_xiaoqu):
         xiaoqu_id = xiaoqu['xiaoqu_id']
         db.delete(table='lj_xiaoqu_detail', condition=f" xiaoqu_id = '{xiaoqu_id}'")
         xiaoqu_url = xiaoqu['xiaoqu_url']
-        print(f"{current_process.name}==>[{index}/{xiaoqu_size}]{xiaoqu_url}")
+        print2(f"{current_process.name}==>[{index}/{xiaoqu_size}]{xiaoqu_url}")
         xiaoqu_detail = get_community_detail(url=xiaoqu_url)
         if xiaoqu_detail:
             fwzs = get_longdong(xiaoqu_detail)['fwzs']
             ldzs = get_longdong(xiaoqu_detail)['ldzs']
-            all_label = json.dumps(xiaoqu_detail)
             insert_detail = {
                 'xiaoqu_id': xiaoqu_id,
                 'fwzs': fwzs,
-                'ldzs': ldzs,
-                'all_label': all_label
+                'ldzs': ldzs
             }
             db.insert(table='lj_xiaoqu_detail', data=insert_detail)
-    time.sleep(random.random() * 3)
-    end = time.time()
-    print(f'{current_process.name} runs %0.2f seconds.' % ((end - start)))
 
 
 def process_list(input_list):
-    import psutil
     cpu_core_num = psutil.cpu_count(logical=False)
     split_result = split_list(input_list, cpu_core_num)
     p = Pool()
-    print('Parent process %s.' % os.getpid())
+    print2('Parent process %s.' % os.getpid())
     for xiaoqu_list in split_result:
         p.apply_async(process_elements, args=(xiaoqu_list,))
-    print('Waiting for all subprocesses done...')
+    print2('Waiting for all subprocesses done...')
     p.close()
     p.join()
-    print('All subprocesses done.')
+    print2('All subprocesses done.')
 
 
 def spider_by_condition(province, city=None, area=None):
@@ -477,7 +527,7 @@ def spider_by_condition(province, city=None, area=None):
     else:
         lj_base_province_sql = f"(select * from lj_base_province where province_name='{province}' )"
     echo_msg += f"]区域下数据..."
-    print(echo_msg)
+    print2(echo_msg)
 
     sql = f"""
     select
@@ -506,19 +556,34 @@ def spider_by_condition(province, city=None, area=None):
     ,t.xiaoqu_url
     ;
     """
-    print(sql)
+    print2(sql)
     all_xiaoqu = db.query(sql)
     process_list(all_xiaoqu)
 
 
+def statistics_info():
+    sql = f"""
+    select lbp.province_name as `省份`
+         , lbp.city_name as `城市`
+         , count(distinct t.xiaoqu_id)   as `总小区数量`
+         , count(distinct lxd.xiaoqu_id) as `已完成数量`
+    from lj_base_xiaoqu t
+    left join lj_base_province lbp on t.city_id = lbp.city_id
+    left join lj_xiaoqu_detail lxd on t.xiaoqu_id = lxd.xiaoqu_id
+    group by lbp.province_name
+           , lbp.city_name;
+    """
+    all_xiaoqu = db.query(sql)
+    statistics_df = pd.DataFrame(all_xiaoqu)
+    print2("\n", statistics_df.to_string(index=False))
+
+
 def main(province, city, area):
-    create_table()
-    db_init(province_name=province)
+    db_init(province_name=province, city_name=city)
     spider_by_condition(province=province, city=city, area=area)
-    to_excel(province)
 
 
-def disclaimer():
+def print_disclaimer():
     message = """
     ######################################################################################################################
                                                    免责声明                                                               
@@ -529,27 +594,25 @@ def disclaimer():
     while True:
         user_input = input("如果您同意本协议, 请输入Y继续: (y/n) ")
         if user_input.lower() == "y":
-            break
+            return True
         elif user_input.lower() == "n":
             sys.exit(0)
 
 
-def usage():
-    return """
-    使用说明
-    Usage: python lianjia.py -p 省份(必填) -c 城市(可选) -a 区域(可选)
-    example1: 北京下所有区域和商圈数据
-        python lianjia.py -p 北京 -c 北京
-    example2: 北京(省)下北京(市)朝阳区域数据
-        python lianjia.py -p 北京 -c 北京 -a 朝阳
-    """
-
-
 if __name__ == '__main__':
-    disclaimer()
-    parser = argparse.ArgumentParser(description='Process province, city, and area.', usage=usage())
-    parser.add_argument('-p', '--province', help='省份名称', required=True)
-    parser.add_argument('-c', '--city', help='城市名称', required=False)
-    parser.add_argument('-a', '--area', help='区域名称', required=False)
-    args = parser.parse_args()
-    main(args.province, args.city, args.area)
+    create_table()
+    disclaimer_accepted = print_disclaimer()
+    if not disclaimer_accepted:
+        exit()
+
+    print("功能选项：\n1. 按区域导出\n2. 打印导出统计信息")
+    function_choice = input("请输入功能序号: ")
+    if function_choice == '2':
+        statistics_info()
+    elif function_choice == '1':
+        province = input("请输入省份名称(必填): ")
+        city = input("请输入省份下城市名称(可选): ")
+        area = input("请输入省份下城市下区域名称(可选): ")
+        if province:
+            main(province, city, area)
+            to_excel(province, city, area)
