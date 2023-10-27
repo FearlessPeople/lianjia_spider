@@ -2,7 +2,7 @@
 <p align="center">
     <a target="_blank" href="https://www.python.org/downloads/release/python-3810/"><img src="https://img.shields.io/badge/Python-3.x-blue.svg" /></a>
     <a target="_blank" href='https://github.com/fangzheng0518/lianjia_spider'><img src="https://img.shields.io/github/stars/fangzheng0518/lianjia_spider.svg?style=social"/></a>
-    <a target="_blank" href="LICENSE"><img src="https://img.shields.io/:license-MIT-blue.svg"></a>
+    <a target="_blank" href="LICENSE"><img src="https://img.shields.io/:license-GPLv3-blue.svg"></a>
 </p>
 
 # 链家网小区信息爬取
