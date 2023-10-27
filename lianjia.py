@@ -18,6 +18,8 @@ from lxml import etree
 
 print_sql = False
 
+sys_platform = sys.platform
+
 
 # pyinstaller --onefile --clean --noconfirm -n lianjia lianjia.py
 def print2(*args, **kwargs):
@@ -505,14 +507,18 @@ def process_elements(all_xiaoqu):
 def process_list(input_list):
     cpu_core_num = psutil.cpu_count(logical=False)
     split_result = split_list(input_list, cpu_core_num)
-    p = Pool()
-    print2('Parent process %s.' % os.getpid())
-    for xiaoqu_list in split_result:
-        p.apply_async(process_elements, args=(xiaoqu_list,))
-    print2('Waiting for all subprocesses done...')
-    p.close()
-    p.join()
-    print2('All subprocesses done.')
+
+    if sys_platform == 'win32':
+        process_elements(input_list)
+    else: # 非windows系统不采用多进程形式跑任务
+        p = Pool()
+        print2('Parent process %s.' % os.getpid())
+        for xiaoqu_list in split_result:
+            p.apply_async(process_elements, args=(xiaoqu_list,))
+        print2('Waiting for all subprocesses done...')
+        p.close()
+        p.join()
+        print2('All subprocesses done.')
 
 
 def spider_by_condition(province, city=None, area=None):
@@ -578,11 +584,6 @@ def statistics_info():
     print2("\n", statistics_df.to_string(index=False))
 
 
-def main(province, city, area):
-    db_init(province_name=province, city_name=city)
-    spider_by_condition(province=province, city=city, area=area)
-
-
 def print_disclaimer():
     message = """
     ######################################################################################################################
@@ -599,7 +600,7 @@ def print_disclaimer():
             sys.exit(0)
 
 
-if __name__ == '__main__':
+def run():
     create_table()
     disclaimer_accepted = print_disclaimer()
     if not disclaimer_accepted:
@@ -614,5 +615,14 @@ if __name__ == '__main__':
         city = input("请输入省份下城市名称(可选): ")
         area = input("请输入省份下城市下区域名称(可选): ")
         if province:
-            main(province, city, area)
+            db_init(province_name=province, city_name=city)
+            spider_by_condition(province=province, city=city, area=area)
             to_excel(province, city, area)
+
+
+def main():
+    run()
+
+
+if __name__ == '__main__':
+    main()
