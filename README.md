@@ -1,6 +1,13 @@
+
+<p align="center">
+    <a target="_blank" href="https://www.python.org/downloads/release/python-3810/"><img src="https://img.shields.io/badge/Python-3.x-blue.svg" /></a>
+    <a target="_blank" href='https://github.com/fangzheng0518/lianjia_spider'><img src="https://img.shields.io/github/stars/fangzheng0518/lianjia_spider.svg?style=social"/></a>
+    <a target="_blank" href="LICENSE"><img src="https://img.shields.io/:license-MIT-blue.svg"></a>
+</p>
+
 # 链家网小区信息爬取
 
-[简介](#简介) | [特性](#特性) | [技术架构](#技术架构) | [快速开始](#快速开始) | [使用说明](#使用说明) | [附录](#附录)
+[简介](#简介) | [特性](#特性) | [技术架构](#技术架构) | [快速开始](#快速开始) | [使用说明](#使用说明) | [免责声明](#免责声明) [附录](#附录)
 
 # 简介
 
@@ -8,10 +15,10 @@
 
 # 特性
 
-- 支持Python3.6+版本
-- 支持数据存储sqliteDB中
-- 支持导出Excel
-- 支持自定义区域（省、市、区）采集
+- [x] 支持Python3.6+版本
+- [x] 支持数据存储sqliteDB中
+- [x] 支持导出Excel
+- [x] 支持自定义区域（省、市、区）采集
 
 # 技术架构
 
@@ -67,6 +74,11 @@ def get_community_detail(url):
   ![整体截图](example/result.png "运行结果")
 - 统计信息
   ![整体截图](example/tongji.png "统计信息")
+
+
+
+# 免责声明
+请勿将`lianjia_spider`应用到任何可能会违反法律规定和道德约束的工作中，请友善使用`lianjia_spider`，遵守蜘蛛协议，不要将`lianjia_spider`用于任何非法用途。如您选择使用`lianjia_spider`即代表您遵守此协议，作者不承担任何由于您违反此协议带来任何的法律风险和损失，一切后果由您承担。
 
 # 附录
 
