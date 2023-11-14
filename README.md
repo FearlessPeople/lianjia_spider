@@ -38,6 +38,11 @@
 4. 运行`python lianjia.py`
 5. 根据提示输入对应信息采集
 
+## 直接下载可执行程序双击执行
+
+从 [releases](https://github.com/fangzheng0518/lianjia_spider/releases/)页面下载对应可执行程序，双击运行
+
+
 # 使用说明
 
 ## 数据存储
