@@ -3,18 +3,17 @@
 import datetime
 import json
 import multiprocessing
-import os
 import sqlite3
 import sys
 import textwrap
 import time
-from multiprocessing import Pool
 from urllib.parse import urlparse
 
 import pandas as pd
 import psutil
 import requests
 from lxml import etree
+from pypinyin import lazy_pinyin, Style
 
 print_sql = False
 
@@ -304,6 +303,15 @@ def get_base_xiaoqu(url):
         return None
 
 
+def get_price(t):
+    if len(t) > 0:
+        result = t.xpath('/html/body/div[6]/div[2]/div[1]/div/span[1]/text()')
+        if result:
+            return str(result[0])
+    else:
+        return 0
+
+
 def get_community_detail(url):
     response = requests.get(url)
     if response.status_code == 200:
@@ -315,8 +323,21 @@ def get_community_detail(url):
             value = xiaoqu_info.xpath('.//span[@class="xiaoquInfoContent"]/text()')[0]
             final_result.append({
                 "label": label,
-                "value": value
+                "value": str(value)
             })
+        final_result.append({
+            'label': '挂牌均价',
+            'value': get_price(tree)
+        })
+        final_result.append({  # 物业费
+            'label': str(tree.xpath('/html/body/div[6]/div[2]/div[2]/div[2]/div[1]/span[1]/text()')[0]),
+            'value': str(tree.xpath('/html/body/div[6]/div[2]/div[2]/div[2]/div[1]/span[2]/text()')[0])
+        })
+        final_result.append({  # 经纬度
+            'label': '经纬度',
+            'value': str(tree.xpath('/html/body/div[6]/div[2]/div[2]/div[2]/div[2]/span[2]/span/@mendian')[0])
+        })
+
         return final_result
 
 
@@ -364,8 +385,7 @@ def create_table():
     (
         `id`          INTEGER PRIMARY KEY AUTOINCREMENT,
         `xiaoqu_id`   varchar(255),
-        `fwzs`        varchar(255), -- 房屋总数
-        `ldzs`        varchar(255), -- 楼栋总数
+        `detail_json` varchar(500), -- 详细信息json格式
         `create_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
         `update_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
     );
@@ -419,14 +439,16 @@ def db_init(province_name=None, city_name=None):
     print2(f"[{province_name}]省份下所有城市、区域、子区域、小区信息初始化完成......")
 
 
-def get_longdong(xiaoqu_detail):
+def get_first_letter(text):
+    pinyin_list = lazy_pinyin(text, style=Style.FIRST_LETTER)
+    return ''.join(pinyin_list)
+
+
+def get_merged_dict(xiaoqu_detail):
     final_result = {}
     if xiaoqu_detail:
         for xiaoqu in xiaoqu_detail:
-            if xiaoqu['label'] == '房屋总数':
-                final_result['fwzs'] = xiaoqu['value']
-            elif xiaoqu['label'] == '楼栋总数':
-                final_result['ldzs'] = xiaoqu['value']
+            final_result[xiaoqu['label']] = xiaoqu['value']
     return final_result
 
 
@@ -436,28 +458,39 @@ def to_excel(province_name, city, area):
     file_path = f'{province_name}数据_{current_timestamp}.xlsx'
     lj_base_areas_sql = f"lj_base_areas"
     if city:
-        lj_base_province_sql = f"(select * from lj_base_province where province_name='{province}' and city_name='{city}' )"
+        lj_base_province_sql = f"(select * from lj_base_province where province_name='{province_name}' and city_name='{city}' )"
         file_path = f'{province_name}-{city}数据_{current_timestamp}.xlsx'
         if area:
             lj_base_areas_sql = f"(select * from lj_base_areas t where region_name='{area}')"
             file_path = f'{province_name}-{city}-{area}数据_{current_timestamp}.xlsx'
     else:
-        lj_base_province_sql = f"(select * from lj_base_province where province_name='{province}' )"
+        lj_base_province_sql = f"(select * from lj_base_province where province_name='{province_name}' )"
 
     sql = f'''
     select 
-       lbp.province_name   as `省份`
-     , lbp.city_name       as `城市`
-     , lba.city_id         as `城市ID`
-     , lba.region_id       as `区域ID`
-     , lba.region_name     as `区域名称`
-     , lba.sub_region_id   as `子区域ID`
-     , lba.sub_region_name as `子区域名称`
-     , "`" || t.xiaoqu_id  as `小区ID`
-     , t.xiaoqu_name       as `小区名称`
-     , t.xiaoqu_url        as `小区URL`
-     , lxd.fwzs            as `房屋总数`
-     , lxd.ldzs            as `楼栋总数`
+      lbp.province_name   as `省份`
+    , lbp.city_name       as `城市`
+    , lba.city_id         as `城市ID`
+    , lba.region_id       as `区域ID`
+    , lba.region_name     as `区域名称`
+    , lba.sub_region_id   as `子区域ID`
+    , lba.sub_region_name as `子区域名称`
+    , "`" || t.xiaoqu_id  as `小区ID`
+    , t.xiaoqu_name       as `小区名称`
+    , t.xiaoqu_url        as `小区URL`
+    ,json_extract(lxd.detail_json,'$.建筑类型') as `建筑类型`
+    ,json_extract(lxd.detail_json,'$.房屋总数') as `房屋总数`
+    ,json_extract(lxd.detail_json,'$.楼栋总数') as `楼栋总数`
+    ,json_extract(lxd.detail_json,'$.绿化率')   as `绿化率`
+    ,json_extract(lxd.detail_json,'$.容积率')   as `容积率`
+    ,json_extract(lxd.detail_json,'$.交易权属') as `交易权属`
+    ,json_extract(lxd.detail_json,'$.建成年代') as `建成年代`
+    ,json_extract(lxd.detail_json,'$.用水类型') as `用水类型`
+    ,json_extract(lxd.detail_json,'$.用水类型') as `用水类型`
+    ,json_extract(lxd.detail_json,'$.用电类型') as `用电类型`
+    ,json_extract(lxd.detail_json,'$.挂牌均价') as `挂牌均价`
+    ,json_extract(lxd.detail_json,'$.物业费')   as `物业费`
+    ,json_extract(lxd.detail_json,'$.经纬度')   as `经纬度`
 from lj_base_xiaoqu t
 left join {lj_base_areas_sql} lba on t.city_id = lba.city_id and t.region_id = lba.region_id and t.sub_region_id = lba.sub_region_id
 left join {lj_base_province_sql} lbp on lba.city_id = lbp.city_id
@@ -473,9 +506,7 @@ group by
      , lba.sub_region_name 
      , "`" || t.xiaoqu_id  
      , t.xiaoqu_name      
-     , t.xiaoqu_url      
-     , lxd.fwzs        
-     , lxd.ldzs            
+     , t.xiaoqu_url
 ;'''
     query_list = db.query(sql)
     result_df = pd.DataFrame(query_list)
@@ -493,13 +524,25 @@ def process_elements(all_xiaoqu):
         xiaoqu_url = xiaoqu['xiaoqu_url']
         print2(f"{current_process.name}==>[{index}/{xiaoqu_size}]{xiaoqu_url}")
         xiaoqu_detail = get_community_detail(url=xiaoqu_url)
+        merged_dict = get_merged_dict(xiaoqu_detail)
+
+        # [{'label': '建筑类型', 'value': '塔楼/板楼/塔板结合/平房'},
+        # {'label': '房屋总数', 'value': '250户'},
+        # {'label': '楼栋总数', 'value': '7栋'},
+        # {'label': '绿化率', 'value': '15%'},
+        # {'label': '容积率', 'value': '2.2'},
+        # {'label': '交易权属', 'value': '商品房/房改房'},
+        # {'label': '建成年代', 'value': '暂无信息'},
+        # {'label': '供暖类型', 'value': '集中供暖/自采暖'},
+        # {'label': '用水类型', 'value': '民水'},
+        # {'label': '用电类型', 'value': '民电'},
+        # {'label': '挂牌均价', 'value': 11376},
+        # {'label': '物业费', 'value': '0.1至0.45元/平米/月'},
+        # {'label': '经纬度', 'value': '113.676176,34.782529'}]
         if xiaoqu_detail:
-            fwzs = get_longdong(xiaoqu_detail)['fwzs']
-            ldzs = get_longdong(xiaoqu_detail)['ldzs']
             insert_detail = {
                 'xiaoqu_id': xiaoqu_id,
-                'fwzs': fwzs,
-                'ldzs': ldzs
+                'detail_json': json.dumps(merged_dict, ensure_ascii=False)
             }
             db.insert(table='lj_xiaoqu_detail', data=insert_detail)
 
@@ -508,17 +551,18 @@ def process_list(input_list):
     cpu_core_num = psutil.cpu_count(logical=False)
     split_result = split_list(input_list, cpu_core_num)
 
-    if sys_platform == 'win32':
-        process_elements(input_list)
-    else: # 非windows系统不采用多进程形式跑任务
-        p = Pool()
-        print2('Parent process %s.' % os.getpid())
-        for xiaoqu_list in split_result:
-            p.apply_async(process_elements, args=(xiaoqu_list,))
-        print2('Waiting for all subprocesses done...')
-        p.close()
-        p.join()
-        print2('All subprocesses done.')
+    process_elements(input_list)
+
+    # if sys_platform == 'win32':  # windows系统不采用多进程形式跑任务
+    #     process_elements(input_list)
+    # else:
+    #     p = Pool()
+    #     for xiaoqu_list in split_result:
+    #         p.apply_async(process_elements, args=(xiaoqu_list,))
+    #     print2('Waiting for all subprocesses done...')
+    #     p.close()
+    #     p.join()
+    #     print2('All subprocesses done.')
 
 
 def spider_by_condition(province, city=None, area=None):

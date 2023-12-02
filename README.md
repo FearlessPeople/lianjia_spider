@@ -53,8 +53,8 @@
 
 ## 采集更多信息
 
-目前程序只测试采集每个小区的楼栋数，小区数，可根据需要修改代码采集更多字段
-可修改`get_community_detail`函数中`xiaoqu_info.xpath`获取的部分代码
+目前程序采集了每个小区的建筑类型、房屋总数、楼栋总数、绿化率、容积率、交易权属、建成年代、用水类型、用电类型、挂牌均价、物业费、经纬度
+可根据需要修改代码采集更多字段，修改`get_community_detail`函数中`xiaoqu_info.xpath`获取的部分代码
 
 ```python
 def get_community_detail(url):
@@ -68,8 +68,21 @@ def get_community_detail(url):
             value = xiaoqu_info.xpath('.//span[@class="xiaoquInfoContent"]/text()')[0]
             final_result.append({
                 "label": label,
-                "value": value
+                "value": str(value)
             })
+        final_result.append({
+            'label': '挂牌均价',
+            'value': get_price(tree)
+        })
+        final_result.append({  # 物业费
+            'label': str(tree.xpath('/html/body/div[6]/div[2]/div[2]/div[2]/div[1]/span[1]/text()')[0]),
+            'value': str(tree.xpath('/html/body/div[6]/div[2]/div[2]/div[2]/div[1]/span[2]/text()')[0])
+        })
+        final_result.append({  # 经纬度
+            'label': '经纬度',
+            'value': str(tree.xpath('/html/body/div[6]/div[2]/div[2]/div[2]/div[2]/span[2]/span/@mendian')[0])
+        })
+
         return final_result
 ```
 
@@ -140,8 +153,7 @@ CREATE TABLE IF NOT EXISTS `lj_xiaoqu_detail`
 (
     `id`          INTEGER PRIMARY KEY AUTOINCREMENT,
     `xiaoqu_id`   varchar(255),
-    `fwzs`        varchar(255), -- 房屋总数
-    `ldzs`        varchar(255), -- 楼栋总数
+    `detail_json` varchar(500), -- 详细信息json格式
     `create_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
     `update_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
 );
