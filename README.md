@@ -7,7 +7,7 @@
 
 # 链家网小区信息爬取
 
-[简介](#简介) | [特性](#特性) | [技术架构](#技术架构) | [快速开始](#快速开始) | [使用说明](#使用说明) | [免责声明](#免责声明) | [附录](#附录)
+[简介](#简介) | [特性](#特性) | [技术架构](#技术架构) | [快速开始](#快速开始) | [使用说明](#使用说明) | [免责声明](#免责声明) | [附录](#附录) | [学习交流](#学习交流) 
 
 # 简介
 
@@ -158,3 +158,9 @@ CREATE TABLE IF NOT EXISTS `lj_xiaoqu_detail`
     `update_time` DATETIME DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
 );
 ```
+
+# 学习交流
+
+关注公众号【大喇叭IT】公众号回复"python"入群交流
+
+![qrcode.jpg](https://s2.loli.net/2024/01/08/uhQcUZw7AXryK9g.jpg)
