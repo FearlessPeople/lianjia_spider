@@ -1,0 +1,48 @@
+
+QPushButton#start_bt{
+background-color: rgb(28, 148, 250);
+color: rgb(255, 255, 255);
+}
+QPushButton#start_bt:hover{
+background-color: rgb(76, 168, 251);
+color: rgb(255, 255, 255);
+}
+QPushButton#start_bt:disabled{
+background-color: rgb(142, 201, 252);
+}
+
+
+
+QPushButton#reset_bt{
+background-color: rgb(233, 152, 64);
+color: rgb(255, 255, 255);
+}
+QPushButton#reset_bt:hover{
+background-color: rgb(238, 172, 96);
+color: rgb(255, 255, 255);
+}
+QPushButton#reset_bt:disabled{
+background-color: rgb(245, 203, 151);
+}
+
+
+QPushButton#stop_bt{
+background-color: rgb(254, 97, 100);
+color: rgb(255, 255, 255);
+}
+QPushButton#stop_bt:hover{
+background-color: rgb(255, 126, 128);
+color: rgb(255, 255, 255);
+}
+
+QPushButton{
+border-radius: 5px;
+}
+
+QPushButton:hover{
+border-radius: 5px;
+}
+QPushButton:disabled{
+border-radius: 5px;
+}
+
