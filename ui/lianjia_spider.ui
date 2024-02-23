@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>739</width>
+    <width>766</width>
     <height>653</height>
    </rect>
   </property>
@@ -197,6 +197,27 @@
      </layout>
     </item>
     <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
+      <item>
+       <widget class="QLabel" name="export_text_label">
+        <property name="text">
+         <string>导出状态：</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="export_text">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_3"/>
+    </item>
+    <item>
      <widget class="QTextBrowser" name="textBrowser"/>
     </item>
     <item>
@@ -212,7 +233,7 @@
        <string notr="true">color: rgb(252, 0, 44);</string>
       </property>
       <property name="text">
-       <string>免责申明：本程序仅用于演示学习目的，不承担任何法律责任，使用本程序代表您同意本免责申明！</string>
+       <string>免责申明：本程序仅用于演示学习目的，不承担任何由该程序产生的法律责任，使用本程序代表您同意本免责申明！</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
