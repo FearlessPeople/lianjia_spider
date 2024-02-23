@@ -207,7 +207,6 @@ class LianJiaGui:
         self.enableButton()
         self.ui.textBrowser.clear()
         self.lj.run_flag = False
-        sys.exit(1)
 
     def disbleButton(self):
         """
