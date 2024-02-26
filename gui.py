@@ -146,7 +146,8 @@ class LianJiaGui:
 
     def readInstructions(self):
         try:
-            with open("使用说明.txt", "r", encoding="utf-8") as file:
+            txt_file_path = os.path.join(basedir, "static", "使用说明.txt")
+            with open(txt_file_path, "r", encoding="utf-8") as file:
                 for line in file:
                     self.ui.textBrowser.append(line.strip())
         except FileNotFoundError:
