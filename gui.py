@@ -141,6 +141,19 @@ class LianJiaGui:
         self.lj = LianjiaSpider(province_name=None)
         self.lj.signals = global_ms
 
+        # 使用说明
+        self.readInstructions()
+
+    def readInstructions(self):
+        try:
+            with open("使用说明.txt", "r", encoding="utf-8") as file:
+                for line in file:
+                    self.ui.textBrowser.append(line.strip())
+        except FileNotFoundError:
+            self.ui.textBrowser.append("找不到使用说明文件！")
+        except Exception as e:
+            self.ui.textBrowser.append(f"读取文件时出错：{str(e)}")
+
     def logPrint(self, fb, text):
         """
         打印内容到页面组件上
