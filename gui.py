@@ -11,19 +11,22 @@
 @describe   : 
 -------------------------------------------------
 """
+import os
 import sys
 import time
 import traceback
-from threading import Thread
 
 from PySide2.QtCore import QFile, Signal, QObject, QThreadPool, QCoreApplication
 from PySide2.QtCore import QRunnable, Slot
+from PySide2.QtGui import QIcon
 from PySide2.QtUiTools import QUiLoader
-from PySide2.QtWidgets import QApplication, QTextBrowser
+from PySide2.QtWidgets import QApplication, QTextBrowser, QSystemTrayIcon, QMenu, QAction
 
 from lianjia import LianjiaSpider
 from utils.util_area import all_province, get_city_by_province
 from utils.util_print import logqueue
+
+basedir = os.path.dirname(__file__)
 
 
 class WorkerSignals(QObject):
@@ -97,11 +100,22 @@ class LianJiaGui:
         # 从 UI 定义中动态 创建一个相应的窗口对象
         # 注意：里面的控件对象也成为窗口对象的属性了
         # 比如 self.ui.button , self.ui.textEdit
-        self.ui = QUiLoader().load('./ui/lianjia_spider.ui')
+        self.log_run_flag = True
+        ui_path = os.path.join(basedir, "static", "ui", "lianjia_spider.ui")
+        self.ui = QUiLoader().load(ui_path)
 
         # 创建一个QFile对象，加载QSS文件
-        style_file = QFile("./ui/lianjia_spider.qss")
+        qss_path = os.path.join(basedir, "static", "ui", "lianjia_spider.qss")
+        style_file = QFile(qss_path)
         style_file.open(QFile.ReadOnly)
+
+        # 设置窗口图标
+        icon_path = os.path.join(basedir, "static", "image", "logo.png")
+        icon = QIcon(icon_path)
+        self.ui.setWindowIcon(icon)
+        tray = QSystemTrayIcon()
+        tray.setIcon(icon)
+        tray.setVisible(True)
 
         # 为整个应用程序设置样式表
         app.setStyleSheet(style_file.readAll().data().decode("utf-8"))
@@ -114,6 +128,8 @@ class LianJiaGui:
         self.ui.start_bt.clicked.connect(self.handleStartSpider)
         # 初始化区域按钮点击事件
         self.ui.reset_bt.clicked.connect(self.handleResetBtnSpider)
+        # 导出Excel按钮点击事件
+        self.ui.export_bt.clicked.connect(self.handleExportBtnSpider)
         # 停止按钮点击事件
         self.ui.stop_bt.clicked.connect(self.handleStopBtnSpider)
 
@@ -149,23 +165,26 @@ class LianJiaGui:
         self.ui.textBrowser.clear()
 
         # 开启一个写日志线程
-        def logThreadFunc():
-            while True:
-                logtext = logqueue.get()
-                if logtext is None:
-                    break
-                else:
-                    global_ms.log_print.emit(self.ui.textBrowser, str(logtext))
-                    time.sleep(0.5)
-
-        t2 = Thread(target=logThreadFunc)
-        t2.start()
+        # def logThreadFunc():
+        #     while True:
+        #         logtext = logqueue.get()
+        #         if logtext is None:
+        #             break
+        #         else:
+        #             global_ms.log_print.emit(self.ui.textBrowser, str(logtext))
+        #             time.sleep(0.5)
+        #
+        # self.log_thread = Thread(target=logThreadFunc)
+        # self.log_thread.start()
+        self.log_run_flag = True
+        log_worker = Worker(self.logThreadFunc)
+        self.threadpool.start(log_worker)
 
         # 开启采集数据线程
         self.lj.province_name = province
         self.lj.city_name = city
         self.lj.run_flag = True
-        worker = Worker(self.spiderThreadFunc)  # Any other args, kwargs are passed to the run function
+        worker = Worker(self.spiderThreadFunc)
         worker.signals.result.connect(self.print_output)
         worker.signals.finished.connect(self.thread_complete)
         worker.signals.progress.connect(self.progress_fn)
@@ -173,6 +192,17 @@ class LianJiaGui:
 
     def progress_fn(self, n):
         print("%d%% done" % n)
+
+    def logThreadFunc(self, progress_callback):
+        while True:
+            if not self.log_run_flag:
+                return
+            logtext = logqueue.get()
+            if logtext is None:
+                break
+            else:
+                global_ms.log_print.emit(self.ui.textBrowser, str(logtext))
+                time.sleep(0.5)
 
     def spiderThreadFunc(self, progress_callback):
         self.lj.spider_by_condition()
@@ -194,10 +224,18 @@ class LianJiaGui:
         province = self.getProvinceText()
         city = self.getCityText()
         self.ui.textBrowser.clear()
-        self.ui.textBrowser.append(f'开始初始化:{province}-{city}')
-        self.ui.statusbar.showMessage(f"开始初始化【{province}-{city}】区域下数据......")
+        self.ui.textBrowser.append(f"正在初始化【{province}-{city}】区域下数据......请等待")
+        self.ui.statusbar.showMessage(f"正在初始化【{province}-{city}】区域下数据......请等待")
 
         self.disbleButton()
+
+    def handleExportBtnSpider(self):
+        """
+        导出Excel
+        """
+        self.lj.province_name = self.getProvinceText()
+        self.lj.city_name = self.getCityText()
+        self.lj.to_excel()
 
     def handleStopBtnSpider(self):
         """
@@ -207,6 +245,8 @@ class LianJiaGui:
         self.enableButton()
         self.ui.textBrowser.clear()
         self.lj.run_flag = False
+        self.log_run_flag = False
+        self.threadpool.waitForDone()
 
     def disbleButton(self):
         """
@@ -216,6 +256,7 @@ class LianJiaGui:
         self.ui.city_comboBox.setEnabled(False)
         self.ui.start_bt.setEnabled(False)
         self.ui.reset_bt.setEnabled(False)
+        self.ui.export_bt.setEnabled(False)
 
     def enableButton(self):
         """
@@ -225,6 +266,7 @@ class LianJiaGui:
         self.ui.city_comboBox.setEnabled(True)
         self.ui.start_bt.setEnabled(True)
         self.ui.reset_bt.setEnabled(True)
+        self.ui.export_bt.setEnabled(True)
 
     def handleProvinceChange(self):
         """
@@ -259,4 +301,18 @@ if __name__ == '__main__':
     app = QApplication([])
     lianjia = LianJiaGui()
     lianjia.ui.show()
+
+    # app.setQuitOnLastWindowClosed(False) # 禁用窗体本身关闭按钮
+    icon_path = os.path.join(basedir, "static", "image", "logo.png")
+    icon = QIcon(icon_path)
+    # Create the tray
+    tray = QSystemTrayIcon()
+    tray.setIcon(icon)
+    tray.setVisible(True)
+    menu = QMenu()
+    quit = QAction("退出")
+    quit.triggered.connect(app.quit)
+    menu.addAction(quit)
+    tray.setContextMenu(menu)
+
     sys.exit(app.exec_())

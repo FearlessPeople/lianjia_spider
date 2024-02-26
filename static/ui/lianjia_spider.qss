@@ -35,6 +35,21 @@ background-color: rgb(255, 126, 128);
 color: rgb(255, 255, 255);
 }
 
+
+QPushButton#export_bt{
+background-color: rgb(28, 148, 250);
+color: rgb(255, 255, 255);
+}
+QPushButton#export_bt:hover{
+background-color: rgb(76, 168, 251);
+color: rgb(255, 255, 255);
+}
+QPushButton#export_bt:disabled{
+background-color: rgb(142, 201, 252);
+}
+
+
+
 QPushButton{
 border-radius: 5px;
 }
@@ -46,3 +61,7 @@ QPushButton:disabled{
 border-radius: 5px;
 }
 
+
+QLabel#help_label{
+color: rgb(76, 168, 251);
+}

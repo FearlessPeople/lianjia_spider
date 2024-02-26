@@ -1,18 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import datetime
 import json
-import multiprocessing
-import sqlite3
 import sys
 import textwrap
 import time
-from multiprocessing import Pool
 from urllib.parse import urlparse
-import queue
 
 import pandas as pd
-import psutil
 import requests
 from lxml import etree
 from pypinyin import lazy_pinyin, Style
@@ -307,13 +301,13 @@ class LianjiaSpider:
         self.city_name = city_name
         self.area_name = area_name
         self.signals = None
-        self.max_num = 0 # 本次采集的总小区数量，用于设置页面上进度条最大值
+        self.max_num = 0  # 本次采集的总小区数量，用于设置页面上进度条最大值
         self.run_flag = True
 
     def db_init(self):
         if not self.province_name:
             raise Exception("未传递省份参数province_name")
-        print2(f"开始初始化[{self.province_name}]省份基础数据...")
+        print2(f"正在初始化[{self.province_name}]省份基础数据...")
         province_list = get_base_province()
         db.delete(table='lj_base_province', condition=f" province_name='{self.province_name}' ")
         for province in province_list:
@@ -418,19 +412,21 @@ class LianjiaSpider:
         query_list = db.query(sql)
         result_df = pd.DataFrame(query_list)
         result_df.to_excel(file_path, index=False)
+        self.signals.export_statu_print.emit(str(f"{file_path}"))
         print2(f"导出成功:{file_path}")
 
     def process_elements(self, all_xiaoqu):
         try:
-            current_process = multiprocessing.current_process()
-            current_process.name = "Lianjia_Process"
+            # current_process = multiprocessing.current_process()
+            # current_process.name = "Lianjia_Process"
             xiaoqu_size = len(all_xiaoqu)
             for index, xiaoqu in enumerate(all_xiaoqu):
                 if self.run_flag:
                     xiaoqu_id = xiaoqu['xiaoqu_id']
                     db.delete(table='lj_xiaoqu_detail', condition=f" xiaoqu_id = '{xiaoqu_id}'")
                     xiaoqu_url = xiaoqu['xiaoqu_url']
-                    print2(f"{current_process.name}==>[{index}/{xiaoqu_size}]{xiaoqu_url}")
+                    # print2(f"{current_process.name}==>[{index}/{xiaoqu_size}]{xiaoqu_url}")
+                    print2(f"[{index}/{xiaoqu_size}]{xiaoqu_url}")
                     self.signals.export_statu_print.emit(str(f'{index}/{xiaoqu_size}'))
                     xiaoqu_detail = get_community_detail(url=xiaoqu_url)
                     merged_dict = get_merged_dict(xiaoqu_detail)
@@ -456,7 +452,7 @@ class LianjiaSpider:
                         db.insert(table='lj_xiaoqu_detail', data=insert_detail)
                 else:
                     print2("程序停止运行......")
-                    break
+                    return
         except Exception as e:
             print2(e)
             return f"Exception in child process: {str(e)}"
@@ -488,7 +484,6 @@ class LianjiaSpider:
         #             print2(f"Error in child process: {str(e)}")
         #
         #     print2('All subprocesses done.')
-
 
     def get_spider_list(self):
         echo_msg = f"开始采集[{self.province_name}"

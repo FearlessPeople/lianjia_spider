@@ -102,6 +102,8 @@ def get_community_detail(url):
 
 # 附录
 
+## 数据库表结构
+
 ```sql
 -- 省份-城市表
 CREATE TABLE IF NOT EXISTS `lj_base_province`
@@ -159,14 +161,41 @@ CREATE TABLE IF NOT EXISTS `lj_xiaoqu_detail`
 );
 ```
 
+## 打包命令
+
+**MacOS打包命令**
+
+```shell
+pyinstaller \
+--clean \
+--python="./venv/bin/python3" \
+--windowed \
+--name="lianjia-macos-arm64" \
+--hidden-import "lxml" \
+--hidden-import "pypinyin" \
+--icon="./static/image/logo.icns" \
+--add-data="static:static" \
+gui.py
+```
+
+**Windows打包命令**
+
+```shell
+pyinstaller \
+--clean \
+--python="./venv/bin/python3" \
+--windowed \
+--name="lianjia-macos-arm64" \
+--hidden-import "lxml" \
+--hidden-import "pypinyin" \
+--icon="./static/image/logo.icns" \
+--add-data="static;static" \
+gui.py
+```
+
 # 学习交流
 
 > 扫码入群交流学习，如群二维码失效请加作者微信：FearlessMan888，备注：python群
 
 <img src="https://s2.loli.net/2024/02/19/deca5ZCFGTfPmjO.jpg" style="width:258px;height:300px;"></img>
-
-
-
-<img src="https://s2.loli.net/2024/01/22/YmHei9hUw4avZtS.png" style="width:258px;height:300px;"></img>
-
 

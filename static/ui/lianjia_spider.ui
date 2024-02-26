@@ -19,7 +19,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0,1,1,1,1">
+     <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QLabel" name="province_label">
         <property name="font">
@@ -150,6 +150,51 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="export_bt">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777212</height>
+         </size>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string>导出Excel</string>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>26</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="shortcut">
+         <string>Ctrl+S</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="stop_bt">
         <property name="minimumSize">
          <size>
@@ -213,9 +258,6 @@
        </widget>
       </item>
      </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3"/>
     </item>
     <item>
      <widget class="QTextBrowser" name="textBrowser"/>
