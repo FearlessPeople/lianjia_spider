@@ -22,7 +22,7 @@ from PySide2.QtGui import QIcon
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtWidgets import QApplication, QTextBrowser, QSystemTrayIcon, QMenu, QAction
 
-from lianjia import LianjiaSpider
+from lianjia import LianjiaSpider, create_table
 from utils.util_area import all_province, get_city_by_province
 from utils.util_print import logqueue
 
@@ -298,6 +298,7 @@ class LianJiaGui:
 
 
 if __name__ == '__main__':
+    create_table()
     app = QApplication([])
     lianjia = LianJiaGui()
     lianjia.ui.show()
@@ -310,9 +311,9 @@ if __name__ == '__main__':
     tray.setIcon(icon)
     tray.setVisible(True)
     menu = QMenu()
-    quit = QAction("退出")
-    quit.triggered.connect(app.quit)
-    menu.addAction(quit)
+    quit_menu = QAction("退出")
+    quit_menu.triggered.connect(app.quit)
+    menu.addAction(quit_menu)
     tray.setContextMenu(menu)
 
     sys.exit(app.exec_())

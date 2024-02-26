@@ -20,8 +20,6 @@ print_sql = False
 sys_platform = sys.platform
 
 
-# pyinstaller --onefile --clean --noconfirm -n lianjia-macos-arm64 lianjia.py
-
 def create_table():
     init_sql = """
     CREATE TABLE IF NOT EXISTS `lj_base_province`

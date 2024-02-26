@@ -181,16 +181,7 @@ gui.py
 **Windows打包命令**
 
 ```shell
-pyinstaller \
---clean \
---python="./venv/bin/python3" \
---windowed \
---name="lianjia-macos-arm64" \
---hidden-import "lxml" \
---hidden-import "pypinyin" \
---icon="./static/image/logo.icns" \
---add-data="static;static" \
-gui.py
+pyinstaller --clean --python="./venv/bin/python3" --windowed --name="LianJia-0.0.2-windows-x86_64" --hidden-import "lxml" --hidden-import "pypinyin" --icon="./static/image/logo.icns" --add-data="static;static" gui.py
 ```
 
 # 学习交流
