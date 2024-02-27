@@ -13,19 +13,6 @@ background-color: rgb(142, 201, 252);
 
 
 
-QPushButton#reset_bt{
-background-color: rgb(233, 152, 64);
-color: rgb(255, 255, 255);
-}
-QPushButton#reset_bt:hover{
-background-color: rgb(238, 172, 96);
-color: rgb(255, 255, 255);
-}
-QPushButton#reset_bt:disabled{
-background-color: rgb(245, 203, 151);
-}
-
-
 QPushButton#stop_bt{
 background-color: rgb(254, 97, 100);
 color: rgb(255, 255, 255);

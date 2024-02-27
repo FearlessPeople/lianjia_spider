@@ -69,7 +69,8 @@ class Worker(QRunnable):
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            self.signals.result.emit(result)  # Return the result of the processing
+            if result:
+                self.signals.result.emit(result)  # Return the result of the processing
         finally:
             self.signals.finished.emit()  # Done
 
@@ -100,10 +101,9 @@ class LianJiaGui:
         # 从 UI 定义中动态 创建一个相应的窗口对象
         # 注意：里面的控件对象也成为窗口对象的属性了
         # 比如 self.ui.button , self.ui.textEdit
-        self.log_run_flag = True
         ui_path = os.path.join(basedir, "static", "ui", "lianjia_spider.ui")
         self.ui = QUiLoader().load(ui_path)
-
+        self.log_run_flag = True
         # 创建一个QFile对象，加载QSS文件
         qss_path = os.path.join(basedir, "static", "ui", "lianjia_spider.qss")
         style_file = QFile(qss_path)
@@ -126,8 +126,6 @@ class LianJiaGui:
         self.ui.province_comboBox.currentIndexChanged.connect(self.handleProvinceChange)
         # 开始按钮点击事件
         self.ui.start_bt.clicked.connect(self.handleStartSpider)
-        # 初始化区域按钮点击事件
-        self.ui.reset_bt.clicked.connect(self.handleResetBtnSpider)
         # 导出Excel按钮点击事件
         self.ui.export_bt.clicked.connect(self.handleExportBtnSpider)
         # 停止按钮点击事件
@@ -172,37 +170,26 @@ class LianJiaGui:
         """
         开始采集按钮点击事件
         """
+        self.start_flag()
         province = self.getProvinceText()
         city = self.getCityText()
 
         self.disbleButton()
         self.ui.textBrowser.clear()
 
-        # 开启一个写日志线程
-        # def logThreadFunc():
-        #     while True:
-        #         logtext = logqueue.get()
-        #         if logtext is None:
-        #             break
-        #         else:
-        #             global_ms.log_print.emit(self.ui.textBrowser, str(logtext))
-        #             time.sleep(0.5)
-        #
-        # self.log_thread = Thread(target=logThreadFunc)
-        # self.log_thread.start()
-        self.log_run_flag = True
-        log_worker = Worker(self.logThreadFunc)
-        self.threadpool.start(log_worker)
-
         # 开启采集数据线程
         self.lj.province_name = province
         self.lj.city_name = city
-        self.lj.run_flag = True
         worker = Worker(self.spiderThreadFunc)
         worker.signals.result.connect(self.print_output)
         worker.signals.finished.connect(self.thread_complete)
         worker.signals.progress.connect(self.progress_fn)
         self.threadpool.start(worker)
+
+        # 开启一个写日志线程
+        self.log_run_flag = True
+        log_worker = Worker(self.logThreadFunc)
+        self.threadpool.start(log_worker)
 
     def progress_fn(self, n):
         print("%d%% done" % n)
@@ -225,6 +212,12 @@ class LianJiaGui:
         #     time.sleep(1)
         #     progress_callback.emit(n)
 
+    def dbinitThreadFunc(self, progress_callback):
+        self.lj.province_name = self.getProvinceText()
+        self.lj.city_name = self.getCityText()
+        self.lj.run_flag = True
+        self.lj.db_init()
+
     def print_output(self, s):
         print(s)
 
@@ -235,13 +228,26 @@ class LianJiaGui:
         """
         初始化区域按钮点击事件
         """
+        self.start_flag()
         province = self.getProvinceText()
         city = self.getCityText()
-        self.ui.textBrowser.clear()
-        self.ui.textBrowser.append(f"正在初始化【{province}-{city}】区域下数据......请等待")
-        self.ui.statusbar.showMessage(f"正在初始化【{province}-{city}】区域下数据......请等待")
 
         self.disbleButton()
+        self.ui.textBrowser.clear()
+
+        # 开启采集数据线程
+        self.lj.province_name = province
+        self.lj.city_name = city
+        worker = Worker(self.dbinitThreadFunc)
+        worker.signals.result.connect(self.print_output)
+        worker.signals.finished.connect(self.thread_complete)
+        worker.signals.progress.connect(self.progress_fn)
+        self.threadpool.start(worker)
+
+        # 开启一个写日志线程
+        self.log_run_flag = True
+        log_worker = Worker(self.logThreadFunc)
+        self.threadpool.start(log_worker)
 
     def handleExportBtnSpider(self):
         """
@@ -255,12 +261,11 @@ class LianJiaGui:
         """
         停止按钮点击事件
         """
+        self.stop_flag()
+        self.threadpool.waitForDone()
         self.ui.statusbar.clearMessage()
         self.enableButton()
         self.ui.textBrowser.clear()
-        self.lj.run_flag = False
-        self.log_run_flag = False
-        self.threadpool.waitForDone()
 
     def disbleButton(self):
         """
@@ -269,7 +274,6 @@ class LianJiaGui:
         self.ui.province_comboBox.setEnabled(False)
         self.ui.city_comboBox.setEnabled(False)
         self.ui.start_bt.setEnabled(False)
-        self.ui.reset_bt.setEnabled(False)
         self.ui.export_bt.setEnabled(False)
 
     def enableButton(self):
@@ -279,7 +283,6 @@ class LianJiaGui:
         self.ui.province_comboBox.setEnabled(True)
         self.ui.city_comboBox.setEnabled(True)
         self.ui.start_bt.setEnabled(True)
-        self.ui.reset_bt.setEnabled(True)
         self.ui.export_bt.setEnabled(True)
 
     def handleProvinceChange(self):
@@ -305,10 +308,18 @@ class LianJiaGui:
 
     def closeEvent(self, event):
         QApplication.processEvents()
-        self.lj.run_flag = False
+        self.stop_flag()
         QCoreApplication.quit()  # 退出应用程序的事件循环
         self.stop_thread()
         self.threadpool.waitForDone()
+
+    def start_flag(self):
+        self.lj.run_flag = True
+        self.log_run_flag = True
+
+    def stop_flag(self):
+        self.lj.run_flag = False
+        self.log_run_flag = False
 
 
 if __name__ == '__main__':

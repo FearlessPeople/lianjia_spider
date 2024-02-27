@@ -309,6 +309,8 @@ class LianjiaSpider:
         province_list = get_base_province()
         db.delete(table='lj_base_province', condition=f" province_name='{self.province_name}' ")
         for province in province_list:
+            if not self.run_flag:
+                return
             if province['province_name'] == self.province_name:
                 db.insert(table='lj_base_province', data=province, echo=print_sql)
 
@@ -318,11 +320,15 @@ class LianjiaSpider:
             condition = f" province_name='{self.province_name}' "
         city_list = db.select(table='lj_base_province', condition=condition)
         for city in city_list:
+            if not self.run_flag:
+                return
             city_id = city['city_id']
             db.delete(table='lj_base_areas', condition=f" city_id='{city_id}'")
             url = city['city_url'] + "xiaoqu"
             areas_list = get_base_areas(url=url)
             for area in areas_list:
+                if not self.run_flag:
+                    return
                 area['city_id'] = city_id
                 region_id = area['region_id']
 
@@ -333,8 +339,11 @@ class LianjiaSpider:
                 sub_region_url = area['sub_region_url']
                 baseurl = f'https://{city_id}.lianjia.com{sub_region_url}'
                 xiaoqu_list = get_base_xiaoqu(url=baseurl)
+                xiaoqu_list_len = len(xiaoqu_list) if xiaoqu_list else 0
                 if xiaoqu_list:
-                    for xiaoqu in xiaoqu_list:
+                    for index, xiaoqu in enumerate(xiaoqu_list):
+                        if not self.run_flag:
+                            return
                         xiaoqu_id = xiaoqu['xiaoqu_id']
                         xiaoqu['city_id'] = city_id
                         xiaoqu['region_id'] = region_id
@@ -342,6 +351,8 @@ class LianjiaSpider:
                         db.delete(table='lj_base_xiaoqu',
                                   condition=f" city_id='{city_id}' and xiaoqu_id='{xiaoqu_id}'")
                         db.insert(table='lj_base_xiaoqu', data=xiaoqu, echo=print_sql)
+                        print2(f"{city_id}-小区id：{xiaoqu_id}")
+                        self.signals.export_statu_print.emit(str(f'{index}/{xiaoqu_list_len}'))
                 else:
                     print2(f"{baseurl}下无小区信息")
         print2(f"[{self.province_name}]省份下所有城市、区域、子区域、小区信息初始化完成......")
@@ -526,12 +537,20 @@ class LianjiaSpider:
         """
         print2(sql)
         all_xiaoqu = db.query(sql)
-        self.max_num = len(all_xiaoqu)
-        return all_xiaoqu
+        if len(all_xiaoqu) > 0:
+            self.max_num = len(all_xiaoqu)
+            return all_xiaoqu
+        else:
+            print2(f"{self.province_name}-{self.city_name}下没有小区信息可采集.")
+            return None
 
     def spider_by_condition(self):
+        self.db_init()
         all_xiaoqu = self.get_spider_list()
-        self.process_list(all_xiaoqu)
+        if all_xiaoqu:
+            self.process_list(all_xiaoqu)
+        else:
+            return
 
 
 def statistics_info():
@@ -595,13 +614,13 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
+    main()
 
-    province = "河南"
-    city = "郑州"
-    area = None
-
-    ljSpider = LianjiaSpider(province_name=province, city_name=city, area_name=area)
-    ljSpider.db_init()
-    ljSpider.spider_by_condition()
-    ljSpider.to_excel()
+    # province = "河南"
+    # city = "郑州"
+    # area = None
+    #
+    # ljSpider = LianjiaSpider(province_name=province, city_name=city, area_name=area)
+    # ljSpider.db_init()
+    # ljSpider.spider_by_condition()
+    # ljSpider.to_excel()
