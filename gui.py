@@ -142,6 +142,14 @@ class LianJiaGui:
         # 使用说明
         self.readInstructions()
 
+        self.startLog()
+
+    def startLog(self):
+        # 开启一个写日志线程
+        self.log_run_flag = True
+        log_worker = Worker(self.logThreadFunc)
+        self.threadpool.start(log_worker)
+
     def readInstructions(self):
         try:
             txt_file_path = os.path.join(basedir, "static", "使用说明.txt")
@@ -186,10 +194,7 @@ class LianJiaGui:
         worker.signals.progress.connect(self.progress_fn)
         self.threadpool.start(worker)
 
-        # 开启一个写日志线程
-        self.log_run_flag = True
-        log_worker = Worker(self.logThreadFunc)
-        self.threadpool.start(log_worker)
+        self.startLog()
 
     def progress_fn(self, n):
         print("%d%% done" % n)
@@ -244,10 +249,7 @@ class LianJiaGui:
         worker.signals.progress.connect(self.progress_fn)
         self.threadpool.start(worker)
 
-        # 开启一个写日志线程
-        self.log_run_flag = True
-        log_worker = Worker(self.logThreadFunc)
-        self.threadpool.start(log_worker)
+        self.startLog()
 
     def handleExportBtnSpider(self):
         """
