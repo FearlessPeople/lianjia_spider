@@ -12,7 +12,7 @@
 # 简介
 
 一个基于进程池的链家网快速爬虫项目，严禁将所得数据商用！ 本项目只供学习使用，作者不承担任何由此带来的法律风险和损失！ 
-同类[采集房天下网小区项目](https://github.com/fangzheng0518/fang_spider)
+同类[采集房天下网小区项目](https://github.com/FearlessPeople/fang_spider)
 
 # 特性
 
@@ -23,7 +23,7 @@
 
 # 技术架构
 
-- Python3.6+
+- Python3.8+ （建议3.9.0）
 - request
 - lxml的xpath解析
 - sqlite
@@ -42,7 +42,7 @@
 
 ## 直接下载可执行程序双击执行
 
-从 [releases](https://github.com/fangzheng0518/lianjia_spider/releases/)页面下载对应可执行程序，双击运行
+从 [releases](https://github.com/FearlessPeople/lianjia_spider/releases)页面下载对应可执行程序，双击运行
 
 
 # 使用说明
@@ -89,6 +89,9 @@ def get_community_detail(url):
 ## 运行截图
 
 - 运行截图
+  ![app1](example/app1.png "app1")
+  ![app2](example/app2.png "app2")
+  ![app3](example/app3.png "app3")
   ![整体截图](example/run1.png "运行截图")
 - 运行结果
   ![整体截图](example/result.png "运行结果")
@@ -161,7 +164,12 @@ CREATE TABLE IF NOT EXISTS `lj_xiaoqu_detail`
 );
 ```
 
-## 打包命令
+## 源码打包
+
+**直接执行py文件进行打包**
+```shell
+python build.py
+```
 
 **MacOS打包命令**
 
